@@ -7,7 +7,7 @@ from typing import Optional
 import anthropic
 
 from loremind.schema import CampaignEntity, EntityType, SessionDump
-from loremind.engine.tinm_adapter import CampaignStore
+from loremind.store import CampaignStore
 
 
 EXTRACT_PROMPT = """You are a campaign wiki builder for a TTRPG Game Master.

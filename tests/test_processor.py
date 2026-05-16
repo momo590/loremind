@@ -10,14 +10,14 @@ from loremind.schema import SessionDump, EntityType
 
 @pytest.fixture
 def tmp_store(tmp_path):
-    from loremind.engine.tinm_adapter import CampaignStore
+    from loremind.store import CampaignStore
     return CampaignStore.__new__(CampaignStore)
 
 
 @pytest.fixture
 def mock_store(tmp_path):
-    from loremind.engine.tinm_adapter import CampaignStore
-    import loremind.engine.tinm_adapter as adapter
+    from loremind.store import CampaignStore
+    import loremind.store as adapter
     adapter.CAMPAIGNS_DIR = tmp_path
     return CampaignStore("test-campaign")
 

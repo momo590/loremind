@@ -1,8 +1,11 @@
-"""Loremind CLI — loremind watch / process / query / serve / mcp."""
+"""Loremind CLI — loremind init / process / query / transcribe / serve / mcp.
+
+v0.1 commands. Capture sources (Clicky, WhatsApp) post to the local HTTP
+backend at 127.0.0.1:7788 — they are not invoked via this CLI.
+"""
 from __future__ import annotations
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Optional
 
@@ -10,11 +13,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from loremind.engine.tinm_adapter import CampaignStore
-from loremind.processor import SessionProcessor
+from loremind.store import CampaignStore
 from loremind.schema import SessionDump, EntityType
-from loremind.watcher import NotesWatcher, ICloudScanWatcher
-from loremind.whatsapp.vision import extract_text_from_image
 
 console = Console()
 
@@ -26,51 +26,22 @@ def _store(campaign: str) -> CampaignStore:
 @click.group()
 @click.option("--campaign", "-c", default="default", envvar="LOREMIND_CAMPAIGN",
               help="Campaign name (default: 'default')")
+@click.option("--review", is_flag=True, default=False,
+              help="Show extracted entities before writing (safer for trust-sensitive GMs)")
 @click.pass_context
-def main(ctx: click.Context, campaign: str) -> None:
+def main(ctx: click.Context, campaign: str, review: bool) -> None:
     """Loremind — your AI remembers every story you tell."""
     ctx.ensure_object(dict)
     ctx.obj["campaign"] = campaign
+    ctx.obj["review"] = review
 
 
 @main.command()
-@click.argument("path", type=click.Path(exists=True))
-@click.option("--auto-process", is_flag=True, default=False,
-              help="Automatically process notes after each change.")
 @click.pass_context
-def watch(ctx: click.Context, path: str, auto_process: bool) -> None:
-    """Watch a file or folder for session note changes."""
-    campaign = ctx.obj["campaign"]
-    store = _store(campaign)
-    processor = SessionProcessor(store)
-    watch_path = Path(path)
-
-    console.print(f"[green]Watching[/green] {watch_path} for campaign [bold]{campaign}[/bold]")
-    console.print("Press Ctrl+C to stop.\n")
-
-    def on_change(changed_path: Path) -> None:
-        console.print(f"  [dim]{changed_path.name}[/dim] changed")
-        if auto_process:
-            text = changed_path.read_text(encoding="utf-8", errors="replace")
-            dump = SessionDump(
-                session_number=len(list((store.root / "raw").glob("session-*.md"))) + 1,
-                raw_text=text,
-                source="file",
-            )
-            entities = processor.process(dump)
-            for e in entities:
-                console.print(f"  [cyan]+[/cyan] {e.entity_type.value}: {e.name}")
-
-    watcher = NotesWatcher(callback=on_change)
-    watcher.add(watch_path)
-    watcher.start()
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        watcher.stop()
-        console.print("\nStopped.")
+def init(ctx: click.Context) -> None:
+    """Initialize Loremind — install Ollama if needed, pull models, create first campaign."""
+    # T6 — implemented in loremind/installer.py
+    console.print("[yellow]TODO[/yellow] T6 — installer.py")
 
 
 @main.command()
@@ -79,7 +50,8 @@ def watch(ctx: click.Context, path: str, auto_process: bool) -> None:
 @click.option("--session", "-s", type=int, default=None, help="Session number (auto-detected if omitted).")
 @click.pass_context
 def process(ctx: click.Context, text: Optional[str], file: Optional[str], session: Optional[int]) -> None:
-    """Process session notes into NPCs, locations, factions, and threads."""
+    """Process session notes into NPCs, locations, factions, items, threads, lore."""
+    from loremind.processor import SessionProcessor
     campaign = ctx.obj["campaign"]
     store = _store(campaign)
     processor = SessionProcessor(store)
@@ -95,8 +67,7 @@ def process(ctx: click.Context, text: Optional[str], file: Optional[str], sessio
         raw_text = sys.stdin.read()
         source = "stdin"
 
-    session_num = session or len(list((store.root / "raw").glob("session-*.md"))) + 1
-
+    session_num = session or len(list((store.root / "sessions").glob("session-*.md"))) + 1
     dump = SessionDump(session_number=session_num, raw_text=raw_text, source=source)
 
     console.print(f"Processing session {session_num}...")
@@ -127,7 +98,6 @@ def query(ctx: click.Context, query: str, entity_type: Optional[str]) -> None:
     et = EntityType(entity_type) if entity_type else None
     entities = store.all_entities(et)
 
-    # Simple keyword match first
     query_lower = query.lower()
     matches = [e for e in entities if query_lower in e.name.lower() or query_lower in e.summary.lower()]
 
@@ -138,73 +108,21 @@ def query(ctx: click.Context, query: str, entity_type: Optional[str]) -> None:
     for e in matches:
         console.print(f"\n[bold cyan]{e.entity_type.value.upper()}[/bold cyan] — [bold]{e.name}[/bold]")
         console.print(e.summary)
-        if e.details:
-            for k, v in e.details.items():
-                console.print(f"  [dim]{k}:[/dim] {v}")
 
 
 @main.command()
-@click.argument("image_path", type=click.Path(exists=True))
+@click.argument("audio_path", type=click.Path(exists=True))
 @click.pass_context
-def scan(ctx: click.Context, image_path: str) -> None:
-    """Extract text from a handwritten notes image and process it."""
-    campaign = ctx.obj["campaign"]
-    store = _store(campaign)
-    processor = SessionProcessor(store)
-
-    console.print(f"Reading {image_path}...")
-    text = extract_text_from_image(Path(image_path))
-
-    if not text:
-        console.print("[red]Could not extract text from image.[/red]")
-        sys.exit(1)
-
-    console.print("[dim]Extracted text:[/dim]")
-    console.print(text)
-    console.print()
-
-    session_num = len(list((store.root / "raw").glob("session-*.md"))) + 1
-    dump = SessionDump(session_number=session_num, raw_text=text, source="scan", image_paths=[image_path])
-    entities = processor.process(dump)
-
-    for e in entities:
-        console.print(f"[green]+[/green] {e.entity_type.value}: [bold]{e.name}[/bold]")
+def transcribe(ctx: click.Context, audio_path: str) -> None:
+    """Transcribe a session recording (m4a, wav, mp3) via Whisper.cpp."""
+    # T7 — implemented in loremind/audio.py
+    console.print("[yellow]TODO[/yellow] T7 — audio.py (whisper.cpp wrapper)")
 
 
 @main.command()
-@click.option("--port", default=5001, help="Port for WhatsApp webhook server.")
-@click.option("--provider", default="twilio", type=click.Choice(["twilio", "meta"]))
+@click.option("--port", default=7788, help="HTTP backend port for Clicky + WhatsApp.")
 @click.pass_context
-def serve(ctx: click.Context, port: int, provider: str) -> None:
-    """Start the WhatsApp webhook server."""
-    os.environ.setdefault("WHATSAPP_PROVIDER", provider)
-    os.environ.setdefault("LOREMIND_CAMPAIGN", ctx.obj["campaign"])
-
-    from loremind.whatsapp.bot import app as flask_app
-    console.print(f"[green]WhatsApp webhook[/green] running on port {port} (provider: {provider})")
-    flask_app.run(host="0.0.0.0", port=port)
-
-
-@main.command()
-@click.pass_context
-def mcp(ctx: click.Context) -> None:
-    """Start the MCP server (inject campaign memory into Claude Desktop)."""
-    # MCP server implementation — serves campaign context as MCP resources
-    campaign = ctx.obj["campaign"]
-    store = _store(campaign)
-    context = store.context_block()
-    # Minimal stdout MCP — reads JSON-RPC from stdin, responds on stdout
-    import json
-    for line in sys.stdin:
-        try:
-            req = json.loads(line)
-            method = req.get("method", "")
-            if method == "resources/list":
-                print(json.dumps({"result": {"resources": [{"uri": "loremind://campaign", "name": campaign}]}}))
-            elif method == "resources/read":
-                print(json.dumps({"result": {"contents": [{"text": context}]}}))
-            else:
-                print(json.dumps({"result": {}}))
-            sys.stdout.flush()
-        except Exception:
-            continue
+def serve(ctx: click.Context, port: int) -> None:
+    """Start the local HTTP backend for Clicky + WhatsApp bot integrations."""
+    # T8 — implemented in loremind/server.py
+    console.print(f"[yellow]TODO[/yellow] T8 — server.py (Flask on 127.0.0.1:{port})")

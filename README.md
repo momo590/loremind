@@ -1,48 +1,51 @@
 # Loremind
 
-**Your AI remembers every story you tell.**
-
-Loremind gives your AI the full memory of your campaign — NPCs, locations, factions, unresolved threads — across every session. Works with Claude, ChatGPT, and any AI tool that supports MCP.
-
-No subscription. No cloud. Your campaign lives in files you own.
+**Find your NPCs, promises, and forgotten threads months later — without having to remember where you wrote them down.**
 
 ---
 
-## What it does
+Your sessions are chaotic. You invent unplanned storylines, NPCs, and locations on the fly. You forget to take notes, and when you do, they're rough.
 
-You run a session. You take notes — typed, handwritten, or sent via WhatsApp. Loremind watches what you write and quietly builds your campaign wiki for you.
+Loremind takes your session recordings, messy notes, and anything else — and quietly builds your campaign wiki for you. New NPCs. New promises. Contradictions to address. Things you said you'd come back to and forgot.
 
-Three months later, when a player asks "wait, what was the deal with Brask the Lopsided?", your AI knows. You don't have to remember where you wrote it down.
+You stay messy at the table. The structure happens afterward, when the chaos is done.
 
 ---
 
-## How to use it
+## How to feed it
 
-### Option A — Type your notes (any editor)
+You don't change how you take notes. Loremind meets you wherever you already work.
+
+**Typing notes anywhere on your computer.** Point Loremind at your notes file (Obsidian vault, a markdown file, a text doc). It watches for changes and processes when you save.
 
 ```bash
-# Point Loremind at your session notes file
 loremind watch ~/Documents/session-notes.md
-
-# After session: structure into NPCs, locations, threads
-loremind process
 ```
 
-Works with Obsidian, BBEdit, TextEdit, VS Code, Notepad — any editor that saves to disk.
+**Watching your screen (Mac 14.2+).** If you take notes in Apple Notes, Discord, or any app that doesn't save to a file, Loremind can watch a specific window — only the one you tell it to. Not your whole screen.
 
-### Option B — WhatsApp (photos + chat)
+**Photos of handwritten notes via WhatsApp.** Add the Loremind number to your contacts. Take a photo of your session sheet, send it. That's it. Works at the table, on a phone, without an app install.
 
-Add the Loremind WhatsApp number to your contacts.
+**Questions during or after the session.** Send a WhatsApp message: *"Who was the third leader of the Iron Circle?"* Loremind answers from your campaign memory.
 
-During or after session:
-- **Send a photo** of your handwritten notes → Loremind reads it and stores it
-- **Ask a question** → "Who is the third leader of the Iron Circle?" → Loremind answers from your campaign memory
+---
 
-No app install. No setup. Just WhatsApp.
+## What you get
 
-### Option C — iCloud Drive scan
+Your campaign data lives as plain markdown files on your machine. No database, no cloud, no subscription. Readable in any editor, backed up like any other folder.
 
-Use iPhone's built-in document scanner (Files app → long press → Scan Documents). Save to `iCloud Drive/Loremind/scans/`. Loremind picks it up automatically.
+```
+~/.loremind/campaigns/iron-veil/
+├── npcs/
+│   ├── brask-the-lopsided.md
+│   ├── patel-the-merchant.md
+│   └── ...
+├── locations/
+├── factions/
+└── threads/                    ← things you promised, never came back to
+    ├── dragon-cult-loyalty-unresolved.md
+    └── ...
+```
 
 ---
 
@@ -52,62 +55,38 @@ Use iPhone's built-in document scanner (Files app → long press → Scan Docume
 curl -fsSL https://loremind.app/install.sh | bash
 ```
 
-Requires Python 3.11+ and an Anthropic or OpenAI API key.
+Requires Python 3.11+ and an API key from Anthropic or OpenAI.
 
 ---
 
-## What gets stored
+## Use it with the AI you already use
 
-Your campaign data lives in `~/.loremind/campaigns/` as plain markdown files. No database. No cloud. Fully readable without any tool.
-
-```
-~/.loremind/campaigns/my-campaign/
-├── npcs/
-│   ├── brask-the-lopsided.md
-│   └── patel-the-merchant.md
-├── locations/
-│   └── the-iron-circle-headquarters.md
-├── factions/
-│   └── iron-circle.md
-└── threads/
-    └── unresolved-dragon-cult-loyalty.md
-```
-
----
-
-## AI client integration (MCP)
-
-Add Loremind to your AI client so it has your campaign memory in every conversation:
+Loremind can inject your campaign memory into Claude Desktop, Claude Code, ChatGPT (via MCP), or any tool that supports the open MCP protocol. Whatever you ask your AI assistant about — homebrew prep, NPC voices, plot inconsistencies — it has the full memory of your campaign.
 
 ```json
 {
   "mcpServers": {
-    "loremind": {
-      "command": "loremind",
-      "args": ["mcp"]
-    }
+    "loremind": { "command": "loremind", "args": ["mcp"] }
   }
 }
 ```
 
-Works with Claude Desktop, any MCP-compatible client.
-
 ---
 
-## Differentiators
+## What makes it different
 
-- **Client-agnostic** — works with whatever AI you already use
-- **Local-first** — your data never leaves your machine
-- **Open source** — MIT license, no lock-in
-- **WhatsApp-native** — no app to install, photos just work
+- **Works with what you already have.** Notes app, Obsidian, Discord, paper — Loremind doesn't ask you to switch.
+- **Your data stays yours.** Plain markdown files on your disk. No cloud account. Cancel anytime by deleting a folder.
+- **Open source.** MIT license. Fork it, modify it, host it yourself.
+- **Stays out of the way.** No AI doing your creative work. Loremind just remembers what you've already created.
 
 ---
 
 ## Roadmap
 
-- **v0.1** — File watcher + WhatsApp bot + iCloud scan
-- **v0.2** — Passive screen capture (any app, fork of [Clicky](https://github.com/farzaa/clicky))
-- **v0.3** — Cross-device sync via PCP protocol
+- **v0.1** — file watcher, WhatsApp bot, iCloud document scanner
+- **v0.2** — screen window watcher (macOS 14.2+, fork of [Clicky](https://github.com/farzaa/clicky))
+- **v0.3** — Windows window watcher, cross-device sync
 
 ---
 
