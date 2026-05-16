@@ -22,7 +22,7 @@ You don't change how you take notes. Loremind meets you wherever you already wor
 loremind watch ~/Documents/session-notes.md
 ```
 
-**Watching your screen (Mac 14.2+).** If you take notes in Apple Notes, Discord, or any app that doesn't save to a file, Loremind can watch a specific window — only the one you tell it to. Not your whole screen.
+**Watching a window on your screen (Mac / Windows / Linux).** If you take notes in Apple Notes, Discord, or any app that doesn't save to a file, Loremind can watch a specific window — only the one you tell it to. Not your whole screen. A small menu bar / system tray app captures the focused window when you press a hotkey.
 
 **Photos of handwritten notes via WhatsApp.** Add the Loremind number to your contacts. Take a photo of your session sheet, send it. That's it. Works at the table, on a phone, without an app install.
 
@@ -84,9 +84,9 @@ Loremind can inject your campaign memory into Claude Desktop, Claude Code, ChatG
 
 ## Roadmap
 
-- **v0.1** — file watcher, WhatsApp bot, iCloud document scanner
-- **v0.2** — screen window watcher (macOS 14.2+, fork of [Clicky](https://github.com/farzaa/clicky))
-- **v0.3** — Windows window watcher, cross-device sync
+- **v0.1** — CLI processor, audio transcription (Whisper local), WhatsApp bot, cross-platform window capture (Tauri, Mac/Win/Linux)
+- **v0.2** — review queue UI, MCP server (Claude Desktop integration), Discord bot
+- **v0.3** — cross-device sync, custom entity types, Foundry VTT / Roll20 integration
 
 ---
 
