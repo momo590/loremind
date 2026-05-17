@@ -11,18 +11,17 @@ license = { text = "MIT" }
 requires-python = ">=3.11"
 keywords = ["ttrpg", "dnd", "gm", "campaign", "memory", "ai", "mcp"]
 dependencies = [
-    "watchdog>=4.0.0",          # file system watcher
-    "anthropic>=0.25.0",        # LLM for structuring notes
+    "anthropic>=0.25.0",        # default cloud LLM provider
     "click>=8.1.0",             # CLI
-    "flask>=3.0.0",             # WhatsApp webhook server
-    "requests>=2.31.0",         # HTTP client
-    "pillow>=10.0.0",           # image handling (scan preprocessing)
     "rich>=13.0.0",             # terminal output
     "python-dotenv>=1.0.0",     # .env config
+    "watchdog>=4.0.0",          # used by audio capture queue (T7)
+    "rapidfuzz>=3.0.0",         # entity fuzzy-merge (T4)
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "pytest-mock>=3.14.0"]
+audio = ["whisper-cpp-python>=0.2.0"]  # T7 optional Whisper.cpp wrapper
 
 [project.scripts]
 loremind = "loremind.cli:main"

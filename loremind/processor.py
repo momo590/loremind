@@ -18,13 +18,13 @@ Extract all named entities (NPCs, locations, factions, unresolved plot threads, 
 For each entity, output a JSON object. Return a JSON array.
 
 Entity schema:
-{
+{{
   "name": "exact name as written",
   "entity_type": "npc|location|faction|thread|event|item",
   "summary": "1-2 sentence summary of what we know",
-  "details": {"key": "value"},  // any specific facts: allegiance, appearance, motivation, status
+  "details": {{"key": "value"}},
   "tags": ["tag1", "tag2"]
-}
+}}
 
 Rules:
 - Extract only entities explicitly mentioned. Do not invent.
