@@ -6,14 +6,21 @@ can round-trip without a YAML dep.
 """
 from __future__ import annotations
 
+from dataclasses import fields as dc_fields
 from pathlib import Path
 from typing import Optional
+
+from rapidfuzz import fuzz
 
 from loremind.schema import (
     Entity,
     EntityType,
     entity_from_markdown,
 )
+
+
+DEFAULT_MERGE_THRESHOLD = 85
+_BASE_ENTITY_FIELDS = {"name", "id", "body_md", "frontmatter"}
 
 
 LOREMIND_HOME = Path.home() / ".loremind"
@@ -62,6 +69,73 @@ class CampaignStore:
                 except (ValueError, KeyError):
                     continue
         return out
+
+    def find_similar(
+        self,
+        name: str,
+        entity_type: Optional[EntityType] = None,
+        threshold: int = DEFAULT_MERGE_THRESHOLD,
+    ) -> Optional[Entity]:
+        """Return the highest-scoring entity with `fuzz.partial_ratio >= threshold`, or None.
+
+        Filters by `entity_type` when given — NPCs only match NPCs, etc. This stops
+        "Iron Citadel" (Location) from merging into "Iron Circle" (Faction).
+        """
+        candidates = self.all_entities(entity_type)
+        best: Optional[Entity] = None
+        best_score = -1.0
+        target = name.lower()
+        for c in candidates:
+            score = fuzz.partial_ratio(target, c.name.lower())
+            if score >= threshold and score > best_score:
+                best = c
+                best_score = score
+        return best
+
+    def merge_entity(self, existing: Entity, new: Entity) -> Entity:
+        """Fold `new` into `existing` in place and return existing (caller persists).
+
+        - Bodies are concatenated when `new.body_md` is fresh.
+        - Frontmatter lists are union'd with order preserved (dedup).
+        - Frontmatter dicts are shallow-merged (new wins on key conflict).
+        - Frontmatter scalars keep existing as canonical (except session-tracking
+          keys, which the processor refreshes after merge).
+        - Typed dataclass fields take `new` only when `existing` is empty.
+        """
+        new_body = new.body_md.strip() if new.body_md else ""
+        if new_body and new_body not in (existing.body_md or ""):
+            if existing.body_md.strip():
+                existing.body_md = existing.body_md.rstrip() + "\n\n" + new_body
+            else:
+                existing.body_md = new_body
+
+        for key, new_val in new.frontmatter.items():
+            if key not in existing.frontmatter:
+                existing.frontmatter[key] = new_val
+                continue
+            existing_val = existing.frontmatter[key]
+            if isinstance(existing_val, list) and isinstance(new_val, list):
+                merged = list(existing_val)
+                for item in new_val:
+                    if item not in merged:
+                        merged.append(item)
+                existing.frontmatter[key] = merged
+            elif isinstance(existing_val, dict) and isinstance(new_val, dict):
+                existing.frontmatter[key] = {**existing_val, **new_val}
+            # else: scalar conflict → keep existing as canonical
+
+        for f in dc_fields(existing):
+            if f.name in _BASE_ENTITY_FIELDS:
+                continue
+            try:
+                existing_val = getattr(existing, f.name)
+                new_val = getattr(new, f.name)
+            except AttributeError:
+                continue
+            if not existing_val and new_val:
+                setattr(existing, f.name, new_val)
+
+        return existing
 
     def save_raw_session(self, session_number: int, text: str, source: str) -> Path:
         path = self.root / "raw" / f"session-{session_number:03d}-{source}.md"

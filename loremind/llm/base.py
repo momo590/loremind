@@ -31,6 +31,12 @@ Rules:
 - Threads = unresolved plot hooks, promises made, mysteries raised.
 - Be specific: "offered the party 200gp, was refused, may return hostile" is better than "merchant".
 - If an entity appears in existing campaign context (provided below), merge/update — don't duplicate.
+- The list of known canonical names below is authoritative: when the notes mention one of
+  these entities (even with a slightly different spelling or title), reuse the EXACT canonical
+  name so the store can merge instead of creating a duplicate.
+
+Known canonical entity names:
+{existing_entity_names}
 
 Existing campaign context:
 {existing_context}

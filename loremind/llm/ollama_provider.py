@@ -38,8 +38,13 @@ class OllamaProvider(LLMProvider):
             return json.loads(resp.read().decode("utf-8"))
 
     def extract_entities(self, text: str, context: dict) -> list[Entity]:
-        existing = context.get("existing_context", "")
-        prompt = EXTRACT_PROMPT.format(existing_context=existing, raw_notes=text)
+        names = context.get("existing_entity_names") or []
+        names_str = ", ".join(names) if names else "(none yet)"
+        prompt = EXTRACT_PROMPT.format(
+            existing_context=context.get("existing_context", ""),
+            existing_entity_names=names_str,
+            raw_notes=text,
+        )
 
         resp = self._post(
             "/api/generate",
