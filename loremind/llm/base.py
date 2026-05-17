@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from loremind.schema import CampaignEntity
+from loremind.schema import Entity
 
 
 EXTRACT_PROMPT = """You are a campaign wiki builder for a TTRPG Game Master.
@@ -45,7 +45,7 @@ class LLMProvider(ABC):
     """Pluggable LLM backend. v0.1 wires extract_entities; OCR + audio are stubs."""
 
     @abstractmethod
-    def extract_entities(self, text: str, context: dict) -> list[CampaignEntity]:
+    def extract_entities(self, text: str, context: dict) -> list[Entity]:
         """Parse raw session text into structured campaign entities."""
 
     @abstractmethod

@@ -12,7 +12,7 @@ from loremind.llm.base import LLMProvider
 from loremind.llm.claude_provider import ClaudeProvider
 from loremind.llm.ollama_provider import OllamaProvider
 from loremind.llm.openai_provider import OpenAIProvider
-from loremind.schema import EntityType
+from loremind.schema import EntityType, Location, NPC
 
 
 def test_factory_returns_ollama_by_default(monkeypatch):
@@ -81,14 +81,15 @@ def test_claude_provider_extract_entities():
 
     assert len(entities) == 1
     e = entities[0]
+    assert isinstance(e, NPC)
     assert e.name == "Brask the Lopsided"
-    assert e.entity_type == EntityType.NPC
-    assert e.details == {"location": "Iron District"}
-    assert e.tags == ["smith"]
+    assert e.entity_type is EntityType.NPC
+    assert e.frontmatter["location"] == "Iron District"
+    assert e.frontmatter["tags"] == ["smith"]
     # Ensure prompt formatting did not choke on JSON braces in the schema example
     call_kwargs = mock_client.messages.create.call_args.kwargs
     sent_prompt = call_kwargs["messages"][0]["content"]
-    assert "Iron District" not in sent_prompt or "Brask" in sent_prompt  # smoke check
+    assert "Brask" in sent_prompt  # raw notes interpolated
     assert '"key": "value"' in sent_prompt  # JSON example survived format()
 
 
@@ -133,7 +134,8 @@ def test_ollama_provider_extract_entities_uses_urlopen():
         entities = provider.extract_entities("Iron Citadel sits on the hill", {})
 
     assert len(entities) == 1
-    assert entities[0].entity_type == EntityType.LOCATION
+    assert isinstance(entities[0], Location)
+    assert entities[0].entity_type is EntityType.LOCATION
 
 
 def test_provider_stubs_raise_not_implemented():

@@ -7,7 +7,7 @@ import urllib.request
 from typing import Optional
 
 from loremind.llm.base import EXTRACT_PROMPT, LLMProvider
-from loremind.schema import CampaignEntity, EntityType
+from loremind.schema import Entity, entity_from_llm_dict
 
 
 DEFAULT_HOST = "http://127.0.0.1:11434"
@@ -37,7 +37,7 @@ class OllamaProvider(LLMProvider):
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def extract_entities(self, text: str, context: dict) -> list[CampaignEntity]:
+    def extract_entities(self, text: str, context: dict) -> list[Entity]:
         existing = context.get("existing_context", "")
         prompt = EXTRACT_PROMPT.format(existing_context=existing, raw_notes=text)
 
@@ -47,16 +47,7 @@ class OllamaProvider(LLMProvider):
         )
         raw = resp.get("response", "").strip()
         data = json.loads(raw)
-        return [
-            CampaignEntity(
-                name=d["name"],
-                entity_type=EntityType(d["entity_type"]),
-                summary=d["summary"],
-                details=d.get("details", {}),
-                tags=d.get("tags", []),
-            )
-            for d in data
-        ]
+        return [entity_from_llm_dict(d) for d in data]
 
     def ocr_image(self, path: str) -> str:
         raise NotImplementedError("Ollama vision OCR (moondream2) wired in T8/v0.2.")

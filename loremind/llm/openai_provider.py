@@ -7,7 +7,7 @@ import urllib.request
 from typing import Optional
 
 from loremind.llm.base import EXTRACT_PROMPT, LLMProvider
-from loremind.schema import CampaignEntity, EntityType
+from loremind.schema import Entity, entity_from_llm_dict
 
 
 DEFAULT_HOST = "https://api.openai.com/v1"
@@ -42,7 +42,7 @@ class OpenAIProvider(LLMProvider):
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
 
-    def extract_entities(self, text: str, context: dict) -> list[CampaignEntity]:
+    def extract_entities(self, text: str, context: dict) -> list[Entity]:
         existing = context.get("existing_context", "")
         prompt = EXTRACT_PROMPT.format(existing_context=existing, raw_notes=text)
 
@@ -56,17 +56,9 @@ class OpenAIProvider(LLMProvider):
         )
         content = resp["choices"][0]["message"]["content"]
         data = json.loads(content)
-        # response_format=json_object always wraps in a dict; entities expected under "entities"
         rows = data["entities"] if isinstance(data, dict) and "entities" in data else data
-        return [
-            CampaignEntity(
-                name=d["name"],
-                entity_type=EntityType(d["entity_type"]),
-                summary=d["summary"],
-                details=d.get("details", {}),
-                tags=d.get("tags", []),
-            )
-            for d in rows
+        return [entity_from_llm_dict(d) for d in data] if isinstance(data, list) else [
+            entity_from_llm_dict(d) for d in rows
         ]
 
     def ocr_image(self, path: str) -> str:
