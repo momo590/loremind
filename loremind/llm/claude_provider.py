@@ -1,7 +1,6 @@
-"""Anthropic Claude provider — default cloud backend."""
+"""Anthropic Claude provider — default cloud backend, uses tool_use for structured output."""
 from __future__ import annotations
 
-import json
 import os
 from typing import Optional
 
@@ -13,15 +12,40 @@ from loremind.schema import Entity, entity_from_llm_dict
 
 DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_MAX_TOKENS = 4096
+EXTRACT_TOOL_NAME = "record_entities"
 
-
-def _strip_fences(raw: str) -> str:
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return raw.strip()
+# Anthropic tool definition. The model is forced to call this tool, so the response
+# is guaranteed to be a structured tool_use block — no markdown fences, no JSON-parse
+# failures, no "I'll explain first…" preambles slipping past.
+EXTRACT_TOOL = {
+    "name": EXTRACT_TOOL_NAME,
+    "description": (
+        "Record the campaign entities extracted from a TTRPG session's raw notes."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "entities": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "entity_type": {
+                            "type": "string",
+                            "enum": ["npc", "location", "faction", "item", "thread", "lore"],
+                        },
+                        "summary": {"type": "string"},
+                        "details": {"type": "object", "additionalProperties": True},
+                        "tags": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["name", "entity_type", "summary"],
+                },
+            }
+        },
+        "required": ["entities"],
+    },
+}
 
 
 class ClaudeProvider(LLMProvider):
@@ -42,11 +66,16 @@ class ClaudeProvider(LLMProvider):
         response = self._client.messages.create(
             model=self._model,
             max_tokens=DEFAULT_MAX_TOKENS,
+            tools=[EXTRACT_TOOL],
+            tool_choice={"type": "tool", "name": EXTRACT_TOOL_NAME},
             messages=[{"role": "user", "content": prompt}],
         )
-        raw_json = _strip_fences(response.content[0].text)
-        data = json.loads(raw_json)
-        return [entity_from_llm_dict(d) for d in data]
+
+        for block in response.content:
+            if getattr(block, "type", None) == "tool_use":
+                rows = block.input.get("entities", [])
+                return [entity_from_llm_dict(d) for d in rows]
+        return []
 
     def ocr_image(self, path: str) -> str:
         raise NotImplementedError("Claude vision OCR is wired in v0.2 (T8 capture endpoint).")

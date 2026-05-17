@@ -1,6 +1,5 @@
 """Tests for session note processing."""
 from __future__ import annotations
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,25 +16,19 @@ def mock_store(tmp_path):
     return CampaignStore("test-campaign")
 
 
-def _mock_anthropic_response(entities_json: str):
-    msg = MagicMock()
-    msg.content = [MagicMock(text=entities_json)]
-    return msg
-
-
-def test_processor_extracts_npc(mock_store):
-    entities_json = json.dumps([{
+def test_processor_extracts_npc(mock_store, claude_tool_response):
+    payload = [{
         "name": "Brask the Lopsided",
         "entity_type": "npc",
         "summary": "Half-orc blacksmith with a silver coin scar on left hand.",
         "details": {"role": "blacksmith", "location": "Iron District"},
         "tags": ["blacksmith", "iron-district"],
-    }])
+    }]
 
     with patch("loremind.llm.claude_provider.anthropic.Anthropic") as mock_cls:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
-        mock_client.messages.create.return_value = _mock_anthropic_response(entities_json)
+        mock_client.messages.create.return_value = claude_tool_response(payload)
 
         processor = SessionProcessor(mock_store, api_key="test-key")
         dump = SessionDump(
@@ -53,19 +46,19 @@ def test_processor_extracts_npc(mock_store):
     assert npc.role == "blacksmith"
 
 
-def test_processor_saves_to_disk(mock_store):
-    entities_json = json.dumps([{
+def test_processor_saves_to_disk(mock_store, claude_tool_response):
+    payload = [{
         "name": "Iron Circle HQ",
         "entity_type": "location",
         "summary": "Fortified warehouse district controlled by the Iron Circle faction.",
         "details": {"region": "Iron District"},
         "tags": ["iron-circle"],
-    }])
+    }]
 
     with patch("loremind.llm.claude_provider.anthropic.Anthropic") as mock_cls:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
-        mock_client.messages.create.return_value = _mock_anthropic_response(entities_json)
+        mock_client.messages.create.return_value = claude_tool_response(payload)
 
         processor = SessionProcessor(mock_store, api_key="test-key")
         dump = SessionDump(
@@ -82,17 +75,17 @@ def test_processor_saves_to_disk(mock_store):
     assert "Iron Circle HQ" in saved.read_text()
 
 
-def test_processor_writes_session_provenance_to_frontmatter(mock_store):
-    entities_json = json.dumps([{
+def test_processor_writes_session_provenance_to_frontmatter(mock_store, claude_tool_response):
+    payload = [{
         "name": "Captain Brask",
         "entity_type": "npc",
         "summary": "Captain of the watch.",
-    }])
+    }]
 
     with patch("loremind.llm.claude_provider.anthropic.Anthropic") as mock_cls:
         mock_client = MagicMock()
         mock_cls.return_value = mock_client
-        mock_client.messages.create.return_value = _mock_anthropic_response(entities_json)
+        mock_client.messages.create.return_value = claude_tool_response(payload)
 
         processor = SessionProcessor(mock_store, api_key="test-key")
         dump = SessionDump(session_number=7, raw_text="watch captain", source="test")
